@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="acting_navigation_head_behavior" type="nav_head_behavior.py" name="nav_head_behavior" output="screen">
+        <remap from="/local_traj" to="/move_base_node/TebLocalPlannerROS/local_traj" />
+    </node>
+</launch>
