@@ -10,9 +10,12 @@ from acting_navigation_head_behavior.cfg import NavHeadBehaviorConfig
 
 NODE_NAME = "acting_navigation_head"
 
-HEAD_TARGET_PUB_TOPIC_NAME = "/head_acting_target"
+HEAD_TARGET_PUB_TOPIC_NAME = "/head_manager/head_acting_target"
+DEBUG_ACTING_PUB_TOPIC_NAME = "/head_manager/debug_acting_point"
 LOCAL_PLAN_SUB_TOPIC_NAME = "/local_traj"
 PUBLISH_FREQUENCY = 10.0  # Hz
+
+NAVIGATION_PRIORITY = 210
 
 
 class NavHeadBehavior:
@@ -20,6 +23,7 @@ class NavHeadBehavior:
         self._name = name
         self._cfg_srv = Server(NavHeadBehaviorConfig, self.reconfigure_cb)
         self._head_target_pub = rospy.Publisher(HEAD_TARGET_PUB_TOPIC_NAME, TargetWithPriority, queue_size=10)
+        self._debug_acting_pub = rospy.Publisher(DEBUG_ACTING_PUB_TOPIC_NAME, PointStamped, queue_size=10)
         self._local_trajectory_sub = rospy.Subscriber(LOCAL_PLAN_SUB_TOPIC_NAME, Trajectory, self.on_new_local_path)
 
         self._current_path = None  # type: Trajectory
@@ -34,6 +38,7 @@ class NavHeadBehavior:
             return
         if rospy.Time.now() - self._current_path.header.stamp > self._local_plan_delay:
             # Last local plan is too old, considering we are not navigating any more
+            rospy.loginfo_throttle(1, "We are not navigating any more, disabling navigation head behavior.")
             return
 
         last_local_traj_pose  = None
@@ -50,11 +55,13 @@ class NavHeadBehavior:
                 p.point.x = pose.transform.translation.x
                 p.point.y = pose.transform.translation.y
                 p.point.z = self._look_point_elevation
-                msg.target.target = p
-                msg.priority = 1
+                msg.target = p
+                msg.priority = NAVIGATION_PRIORITY
                 self._head_target_pub.publish(msg)
+                self._debug_acting_pub.publish(p)
                 return
 
+        return
         # End of local plan hit, looking a point towards final desired orientation
         if last_local_traj_pose is None:
             last_local_traj_pose = self._current_path.points[-1]
@@ -69,10 +76,10 @@ class NavHeadBehavior:
         p.point.x = last_local_traj_pose.transform.translation.x + self._end_plan_look_distance * math.cos(yaw)
         p.point.y = last_local_traj_pose.transform.translation.y + self._end_plan_look_distance * math.sin(yaw)
         p.point.z = self._look_point_elevation
-        msg.target.target = p
-        msg.priority = 1
-        rospy.loginfo("Looking at end of plan")
+        msg.target = p
+        msg.priority = NAVIGATION_PRIORITY
         self._head_target_pub.publish(msg)
+        self._debug_acting_pub.publish(p)
 
     def on_new_local_path(self, local_path):
         self._current_path = local_path

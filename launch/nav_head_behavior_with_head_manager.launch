@@ -1,0 +1,6 @@
+<launch>
+    <!--<node pkg="head_manager" type="head_manager_node.py" name="head_manager" output="screen">-->
+    <!--</node>-->
+    <node pkg="rostopic" type="rostopic" name="robot_head_activity_state_publisher" args='pub /head_state_vector head_manager/HeadStateVector "monitoring_factor: 1.0 acting_factor: 1.0 speaking_factor: 1.0"'/>
+    <include file="$(find acting_navigation_head_behavior)/launch/nav_head_behavior.launch" />
+</launch>
